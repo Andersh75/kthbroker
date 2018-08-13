@@ -1,0 +1,24 @@
+{
+  "name": "kthdb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@polymer/iron-media-query": "^3.0.0-pre.21",
+    "@polymer/polymer": "^3.0.5",
+    "@vaadin/vaadin-button": "^2.1.0-beta2",
+    "@vaadin/vaadin-checkbox": "^2.2.0-beta2",
+    "@vaadin/vaadin-combo-box": "^4.1.0-beta2",
+    "@vaadin/vaadin-context-menu": "^4.1.0-beta2",
+    "@vaadin/vaadin-dropdown-menu": "^1.1.0-beta2",
+    "@vaadin/vaadin-grid": "^5.1.0-beta2",
+    "@vaadin/vaadin-list-box": "^1.1.0-beta2",
+    "@whcg/whcg-helper": "^1.0.2",
+    "pouchdb": "^7.0.0"
+  }
+}
