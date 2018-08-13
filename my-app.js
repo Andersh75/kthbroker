@@ -29,11 +29,27 @@ class MyApp extends PolymerElement {
     this.arrName = [];
     this.arrIdsMunicipality = [];
     this.arrMunicipality = [];
+    this.page = 0;
 
   }
 
   static get properties() {
     return {
+      items: {
+        type: Array,
+        readOnly: false,
+        notify: true,
+      },
+      page: {
+        type: Number,
+        readOnly: false,
+        notify: true,
+      },
+      pages: {
+        type: Array,
+        readOnly: false,
+        notify: true,
+      },
       dataprop: {
         type: String,
         readOnly: false,
@@ -82,6 +98,11 @@ class MyApp extends PolymerElement {
     };
   }
  
+  static get observers() {
+    return [
+      '_itemsChanged(items, page)'
+    ]
+  }
 
   static get template() {
     return html`
@@ -90,7 +111,41 @@ class MyApp extends PolymerElement {
       :host {
         /* display: inline-block; */
       }
+
+      #pages {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 20px;
+      }
+
+      #pages > button {
+        user-select: none;
+        padding: 5px;
+        margin: 0 5px;
+        border-radius: 10%;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        outline: none;
+        cursor: pointer;
+      }
+
+      #pages > button:hover,
+      #pages > button:focus {
+        color: #ccc;
+        background-color: #eee;
+      }
+
+      #pages > button[selected] {
+        font-weight: bold;
+        color: white;
+        background-color: #ccc;
+      }
     </style>
+
+
+
+
       <!-- <vaadin-button>BUTTON</vaadin-button>
       <vaadin-dropdown-menu placeholder="Language"></vaadin-dropdown-menu>
       
@@ -104,10 +159,58 @@ class MyApp extends PolymerElement {
 
 
       
+
+
+
+
+
+
+
+    <vaadin-grid id="gridpaginated" page-size="100" height-by-rows>
+
+      <vaadin-grid-column>
+        <template class="header">Municipality</template>
+        <template>
+          [[item.municipality]]
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column>
+        <template class="header">Build year</template>
+        <template>
+          [[item.build_year]]
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column width="200px">
+        <template class="header">Name</template>
+        <template>
+          <div>[[item.raw_real_estate_company_name]]</div>
+        </template>
+      </vaadin-grid-column>
+
+    </vaadin-grid>
+
+
+    <div id="pages">
+      <button on-click="_prev">&lt;</button>
+      <template is="dom-repeat" items="[[pages]]">
+        <button on-click="_select" selected$="[[_isSelected(page, item)]]">[[item]]</button>
+      </template>
+      <button on-click="_next">&gt;</button>
+    </div>
+
+
+
+
+
+
+
+
       
 
 
-      <vaadin-grid id="namegrid" aria-label="Basic Binding Example" items="{{nametabledata}}" on-change="handleNameGridChange" >
+      <vaadin-grid id="namegrid" aria-label="Basic Binding Example" items="{{nametabledata}}" on-change="handleNameGridChangeFind" >
         <vaadin-grid-selection-column auto-select></vaadin-grid-selection-column>
         <vaadin-grid-column>
           <template class="header"><vaadin-grid-sorter path="key">Name</vaadin-grid-sorter></template>
@@ -117,7 +220,7 @@ class MyApp extends PolymerElement {
       </vaadin-grid>
 
 
-      <vaadin-grid id="municipalitygrid" aria-label="Basic Binding Example" items="{{municipalitytabledata}}" on-change="handleMunicipalityGridChange" >
+      <vaadin-grid id="municipalitygrid" aria-label="Basic Binding Example" items="{{municipalitytabledata}}" on-change="handleMunicipalityGridChangeFind" >
         <vaadin-grid-selection-column auto-select></vaadin-grid-selection-column>
         <vaadin-grid-column>
           <template class="header"><vaadin-grid-sorter path="key">Municipality</vaadin-grid-sorter></template>
@@ -195,6 +298,75 @@ class MyApp extends PolymerElement {
   // }
 
 
+  _isSelected(page, item) {
+    return page === item - 1;
+  };
+
+_select(e) {
+  this.page = e.model.item - 1;
+};
+
+_next() {
+  this.page = Math.min(this.pages.length - 1, this.page + 1);
+};
+
+_prev() {
+  this.page = Math.max(0, this.page - 1);
+};
+
+_itemsChanged(items, page) {
+  if (items === undefined || page === undefined) {
+    return;
+  }
+
+  if (!this.pages) {
+    this.pages = Array.apply(null, { length: Math.ceil(items.length / this.$.gridpaginated.pageSize) }).map(function (item, index) {
+      return index + 1;
+    });
+  }
+
+  var start = page * this.$.gridpaginated.pageSize;
+  var end = (page + 1) * this.$.gridpaginated.pageSize;
+  this.$.gridpaginated.items = items.slice(start, end);
+};
+
+
+
+
+
+
+  handleNameGridChangeFind(e) {
+    let selectedNames = this.$.namegrid.selectedItems
+    let names = selectedNames.map(name => {
+      return name.key;
+    });
+    let that = this;
+    this.db.find({
+    selector: { raw_real_estate_company_name: { $gte: "a" } },
+      //selector: { municipality: { $eq: "NACKA" } },
+      // selector: {
+      //   municipality: {$or: [
+      //     { $eq: 'STOCKHOLM' },
+      //     { $eq: 'NACKA' }
+      //   ]}
+      // },
+      // selector: { 
+      //   raw_real_estate_company_name: { $gte: "a" },
+      //   municipality: { $gte: null },
+      //   build_year: { $gte: "1955" }
+      // },
+      limit: 1000
+    }).then(function (result) {
+      console.log(result);
+      console.log(result.docs);
+      that.items = result.docs;
+    }).catch(function (err) {
+      console.log(err);
+    });
+  }
+
+  
+
 
   handleGridChange(e) {
     // console.log('GRIDCHANGE');
@@ -248,10 +420,6 @@ class MyApp extends PolymerElement {
             return test;
           });
 
-          console.log('subArr');
-          console.log(subArr);
-          console.log(subArr.length);
-
           //SUBARR SKA TESTAS MOT LISTAN OCH LÄGGAS TILL OM ID INTE REDAN FINNS
 
           let addThese = subArr.filter(subArrItem => {
@@ -266,9 +434,6 @@ class MyApp extends PolymerElement {
 
           this.totalList.push(...addThese);
 
-          console.log('this.totalList');
-          console.log(this.totalList);
-
         } else {
 
           let listToRemove = that.arrName.filter(arrNameItem => {
@@ -280,10 +445,6 @@ class MyApp extends PolymerElement {
             });
             return test;
           });
-
-          console.log('listToRemove');
-          console.log(listToRemove);
-          console.log(listToRemove.length);
 
           //SUBARR SKA TESTAS MOT LISTAN OCH TAS BORT OM ID INTE REDAN FINNS
           let listAfterRemoval = this.totalList.filter(totalListItem => {
@@ -298,8 +459,6 @@ class MyApp extends PolymerElement {
 
           this.totalList = listAfterRemoval;
 
-          console.log('this.totalList');
-          console.log(this.totalList);
         }
 
         that.arrName = newArrName;
@@ -307,26 +466,17 @@ class MyApp extends PolymerElement {
 
         that.arrIdsName = newArrIdsName;
 
-        // that.totalList = that.totalList.concat(...uniqueitems);
-        // console.log('totalList');
-        // console.log(that.totalList);
       that.tabledata = this.totalList;
       });
 
   }
 
-
-
   handleMunicipalityGridChange(e) {
-    console.log('MUNICIPALITYGRIDCHANGE');
-    console.log(e);
-    console.log(this.$.municipalitygrid.selectedItems);
     let selectedMunicipalities = this.$.municipalitygrid.selectedItems
     let municipalities = selectedMunicipalities.map(municipality => {
       return municipality.key;
     });
 
-    console.log(municipalities);
     let that = this;
 
     Promise.all(municipalities.map(col => {
@@ -346,12 +496,6 @@ class MyApp extends PolymerElement {
 
       let arrdiff = this.arr_diff(newArrIdsName, that.arrIdsMunicipality);
 
-      console.log('arrdiff');
-      console.log(arrdiff.length);
-
-      console.log(newArrIdsName.length);
-      console.log(that.arrIdsMunicipality.length);
-
       if (newArrIdsName.length > that.arrIdsMunicipality.length) {
         
         var subArr = newArrName.filter(newArrNameItem => {
@@ -363,10 +507,6 @@ class MyApp extends PolymerElement {
           });
           return test;
         });
-
-        console.log('subArr');
-        console.log(subArr);
-        console.log(subArr.length);
 
         //SUBARR SKA TESTAS MOT LISTAN OCH LÄGGAS TILL OM ID INTE REDAN FINNS
 
@@ -382,9 +522,6 @@ class MyApp extends PolymerElement {
 
         this.totalList.push(...addThese);
 
-        console.log('this.totalList');
-        console.log(this.totalList);
-
       } else {
 
         let listToRemove = that.arrMunicipality.filter(arrNameItem => {
@@ -396,10 +533,6 @@ class MyApp extends PolymerElement {
           });
           return test;
         });
-
-        console.log('listToRemove');
-        console.log(listToRemove);
-        console.log(listToRemove.length);
 
         //SUBARR SKA TESTAS MOT LISTAN OCH TAS BORT OM ID INTE REDAN FINNS
         let listAfterRemoval = this.totalList.filter(totalListItem => {
@@ -414,18 +547,12 @@ class MyApp extends PolymerElement {
 
         this.totalList = listAfterRemoval;
 
-        console.log('this.totalList');
-        console.log(this.totalList);
       }
 
       that.arrMunicipality = newArrName;
 
-
       that.arrIdsMunicipality = newArrIdsName;
 
-      // that.totalList = that.totalList.concat(...uniqueitems);
-      // console.log('totalList');
-      // console.log(that.totalList);
       that.tabledata = this.totalList;
     });
   }
@@ -552,7 +679,7 @@ class MyApp extends PolymerElement {
     });
 
 
-    //CREATE LIST OF NAMES
+    //CREATE TABLE OF NAMES
     this.db.query('my_index8/by_name', {
       startkey: 'A',
       reduce: true,
@@ -566,6 +693,8 @@ class MyApp extends PolymerElement {
       console.log(err);
     });
 
+
+    //CREATE TABLE OF MUNICIPALITIES
     this.db.query('my_index8/by_municipality', {
       startkey: 'A',
       reduce: true,
@@ -580,10 +709,35 @@ class MyApp extends PolymerElement {
     });
 
 
+
+    this.db.find({
+      selector: { name: { $eq: 'Mario' } }
+    }).then(function (result) {
+      // handle result
+    }).catch(function (err) {
+      console.log(err);
+    });
+
   }
 }
-/* Register the new element with the browser */
+
 window.customElements.define('my-app', MyApp);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
       // // that.columns = ['doc.county', 'doc.congregation'];
